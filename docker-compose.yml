@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  provision:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./provision_data:/var/lib/provision
+    environment:
+      - DATABASE_PATH=/var/lib/provision/provision.db
+      - DATA_DIR=/var/lib/provision/storage
+      - PORT=8000

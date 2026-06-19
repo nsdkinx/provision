@@ -5,18 +5,18 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
-	"os"
 	"provision/product"
 	"sync"
 	"time"
 )
 
-// Server holds the application dependencies and state.
 type Server struct {
-	DB      *sql.DB
-	DataDir string
-	Logger  *slog.Logger
-	wg      sync.WaitGroup // Tracks background tasks like zip compression
+	DB       *sql.DB
+	DataDir  string
+	Logger   *slog.Logger
+	Config   Config
+	AdminKey string
+	wg       sync.WaitGroup // Tracks background tasks like zip compression
 }
 
 // Config controls server-wide options.
@@ -94,8 +94,7 @@ func (server *Server) AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			}
 		} else {
 			// Global endpoint like GET /products (usually requires admin key)
-			adminKey := os.Getenv("ADMIN_KEY")
-			if adminKey == "" || apiKey != adminKey {
+			if server.AdminKey == "" || apiKey != server.AdminKey {
 				server.SendError(w, http.StatusForbidden, "INVALID_ADMIN_KEY", "Invalid or missing Admin Key")
 				return
 			}

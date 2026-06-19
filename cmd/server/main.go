@@ -7,8 +7,12 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"os/user"
+	"path/filepath"
 	"provision/api"
 	"provision/database"
+	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -17,13 +21,7 @@ import (
 func main() {
 	// Configuration
 	dbPath := os.Getenv("DATABASE_PATH")
-	if dbPath == "" {
-		dbPath = "provision.db"
-	}
 	dataDir := os.Getenv("DATA_DIR")
-	if dataDir == "" {
-		dataDir = "data"
-	}
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8000"
@@ -31,6 +29,42 @@ func main() {
 	logLevel := os.Getenv("LOG_LEVEL")
 	if logLevel == "" {
 		logLevel = "info"
+	}
+	maxUploadSizeStr := os.Getenv("MAX_UPLOAD_SIZE")
+	var maxUploadSize int64 = 500 * 1024 * 1024 // 500MB default
+	if maxUploadSizeStr != "" {
+		if size, err := strconv.ParseInt(maxUploadSizeStr, 10, 64); err == nil {
+			maxUploadSize = size
+		}
+	}
+	adminKey := os.Getenv("ADMIN_KEY")
+
+	// Smart Default Paths
+	if dbPath == "" || dataDir == "" {
+		var baseDir string
+		u, err := user.Current()
+		if err == nil && u.Uid == "0" && runtime.GOOS == "linux" {
+			baseDir = "/var/lib/provision"
+		} else {
+			home, err := os.UserHomeDir()
+			if err == nil {
+				baseDir = filepath.Join(home, ".local", "share", "provision")
+			} else {
+				baseDir = "provision_data"
+			}
+		}
+
+		if dbPath == "" {
+			dbPath = filepath.Join(baseDir, "provision.db")
+		}
+		if dataDir == "" {
+			dataDir = filepath.Join(baseDir, "storage")
+		}
+	}
+
+	// Create base directory for db if it doesn't exist (assuming dirname of dbPath)
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
+		os.Exit(1)
 	}
 
 	// Initialize Logger using log/slog
@@ -71,9 +105,11 @@ func main() {
 
 	// Initialize API State
 	apiState := &api.Server{
-		DB:      db,
-		DataDir: dataDir,
-		Logger:  logger,
+		DB:       db,
+		DataDir:  dataDir,
+		Logger:   logger,
+		Config:   api.Config{MaxUploadSize: maxUploadSize},
+		AdminKey: adminKey,
 	}
 
 	// Setup Router

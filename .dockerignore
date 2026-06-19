@@ -1,0 +1,7 @@
+provision_data
+.git
+data
+provision.db
+*.zip
+*.tmp
+*.patch

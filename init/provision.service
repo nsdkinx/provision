@@ -1,0 +1,19 @@
+[Unit]
+Description=Provision OTA Server
+After=network.target
+
+[Service]
+Type=simple
+User=provision
+Group=provision
+ExecStart=/usr/local/bin/provision-server
+EnvironmentFile=-/etc/provision/provision.conf
+Restart=on-failure
+RestartSec=5
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=full
+ReadWritePaths=/var/lib/provision
+
+[Install]
+WantedBy=multi-user.target

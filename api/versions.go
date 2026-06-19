@@ -51,6 +51,7 @@ func (server *Server) HandleInitialVersion(w http.ResponseWriter, r *http.Reques
 
 	productID := r.PathValue("product_id")
 
+	r.Body = http.MaxBytesReader(w, r.Body, server.Config.MaxUploadSize)
 	mr, err := r.MultipartReader()
 	if err != nil {
 		server.SendError(w, http.StatusBadRequest, "INVALID_MULTIPART", "Failed to parse multipart form")
@@ -215,6 +216,7 @@ func (server *Server) HandleUpdateVersion(w http.ResponseWriter, r *http.Request
 
 	productID := r.PathValue("product_id")
 
+	r.Body = http.MaxBytesReader(w, r.Body, server.Config.MaxUploadSize)
 	mr, err := r.MultipartReader()
 	if err != nil {
 		server.SendError(w, http.StatusBadRequest, "INVALID_MULTIPART", "Failed to parse multipart form")
@@ -436,9 +438,6 @@ func (server *Server) HandleUpdateVersion(w http.ResponseWriter, r *http.Request
 
 	// Schedule post-update asynchronous tasks
 	server.scheduleMasterZipBuild(productID, permVersionPath)
-	server.RunAsync(func() {
-		os.RemoveAll(filesystem.VersionPath(server.DataDir, productID, updateRequest.FromVersion))
-	})
 
 	server.SendJSONResponse(w, http.StatusCreated, toVersion)
 }
